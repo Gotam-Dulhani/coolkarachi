@@ -187,10 +187,11 @@ def build(out: Path) -> None:
          "An Explainable Machine-Learning Digital Twin for 30 m Urban Heat "
          "Mapping and Cooling-Intervention Prioritisation in Karachi",
          size=20, color=RGBColor(0xC9, 0xD3, 0xE0), spacing=1.3)
-    rect(s, Inches(1.2), Inches(5.5), Inches(5.2), Inches(0.02),
+    rect(s, Inches(1.2), Inches(5.35), Inches(5.2), Inches(0.02),
          RGBColor(0x3A, 0x4A, 0x60))
-    text(s, Inches(1.2), Inches(5.75), Inches(10), Inches(1.0),
-         ["Data Science Course Project  ·  FAST-NUCES Karachi",
+    text(s, Inches(1.2), Inches(5.55), Inches(10), Inches(1.4),
+         ["Gotam Dulhani (23I-0545)  ·  Mohat Kumar (23K-0894)",
+          "Data Science Course Project  ·  FAST-NUCES Karachi",
           "Google Earth Engine  ·  Landsat 8/9  ·  Sentinel-2  ·  SHAP"],
          size=13, color=RGBColor(0x8E, 0x9E, 0xB5), spacing=1.4)
 

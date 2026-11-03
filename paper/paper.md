@@ -1,6 +1,6 @@
 ---
 title: CoolKarachi — An Explainable Machine-Learning Digital Twin for 30 m Urban Heat Mapping and Cooling-Intervention Prioritisation in Karachi
-authors: Your Name (i230545)
+authors: Gotam Dulhani (23I-0545), Mohat Kumar (23K-0894)
 affiliation: Department of Data Science, FAST-NUCES, Karachi, Pakistan
 ---
 
