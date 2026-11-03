@@ -1,0 +1,21 @@
+\begin{table}[t]
+\centering
+\caption{Global feature importance from SHAP (mean absolute SHAP value, °C). Rank 1 = most influential.}
+\label{tab:shap}
+\begin{tabular}{lcccc}
+\toprule
+& \multicolumn{2}{c}{local} & \multicolumn{2}{c}{raw} \\
+& rank & $|\phi|$ & rank & $|\phi|$ \\
+\midrule
+NDBI & 1 & 0.326 & 2 & 0.682 \\
+NDWI & 2 & 0.156 & 5 & 0.266 \\
+TREE_FRAC & 3 & 0.142 & 6 & 0.198 \\
+BUILT_FRAC & 4 & 0.126 & 7 & 0.179 \\
+POP_LOG & 5 & 0.088 & 4 & 0.434 \\
+WATER_FRAC & 6 & 0.087 & 8 & 0.170 \\
+ELEV & 7 & 0.087 & 3 & 0.566 \\
+ALBEDO & 8 & 0.061 & 9 & 0.120 \\
+NDVI & 9 & 0.038 & 10 & 0.070 \\
+\bottomrule
+\end{tabular}
+\end{table}

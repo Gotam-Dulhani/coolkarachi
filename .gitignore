@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Data (large, re-downloadable)
+data/*.csv
+data/*.tif
+data/*.tiff
+data/*.parquet
+
+# Model artefacts
+models/*.pkl
+models/*.joblib
+results/*.joblib
+results/*.pkl
+
+# Scratch / run logs
+run_*.log
+_check_paper.md
+paper/_*.pdf
+paper/_dump.txt
+slides/_dump.txt
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.json
+!package.json
+!results/best_params_*.json

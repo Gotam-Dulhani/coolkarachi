@@ -1,0 +1,31 @@
+\begin{table}[t]
+\centering
+\caption{Out-of-sample performance of the four models under spatial block cross-validation. Best value per target in bold.}
+\label{tab:models}
+\begin{tabular}{lccccc}
+\toprule
+Model & RMSE & MAE & $R^2$ & MBE & $n$ \\
+\midrule
+\multicolumn{6}{l}{\textit{Local anomaly (LST $-$ 2~km block mean)}} \\
+\midrule
+RF & 1.219 & 0.928 & 0.219 & -0.002 & 56,613 \\
+XGB & 1.221 & 0.931 & 0.216 & +0.002 & 56,613 \\
+MLP & 1.222 & 0.932 & 0.215 & -0.008 & 56,613 \\
+LGBM & 1.223 & 0.933 & 0.214 & +0.002 & 56,613 \\
+\midrule
+\multicolumn{6}{l}{\textit{Within-year anomaly (LST $-$ year mean)}} \\
+\midrule
+MLP & 1.754 & 1.379 & 0.500 & -0.107 & 56,613 \\
+RF & 1.755 & 1.379 & 0.500 & -0.083 & 56,613 \\
+XGB & 1.757 & 1.380 & 0.498 & -0.107 & 56,613 \\
+LGBM & 1.759 & 1.383 & 0.497 & -0.106 & 56,613 \\
+\midrule
+\multicolumn{6}{l}{\textit{Raw LST (°C)}} \\
+\midrule
+LGBM & 1.661 & 1.299 & 0.626 & -0.109 & 56,613 \\
+RF & 1.661 & 1.290 & 0.626 & -0.095 & 56,613 \\
+XGB & 1.663 & 1.299 & 0.625 & -0.111 & 56,613 \\
+MLP & 1.685 & 1.314 & 0.616 & -0.077 & 56,613 \\
+\bottomrule
+\end{tabular}
+\end{table}
