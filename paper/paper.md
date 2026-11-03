@@ -392,7 +392,13 @@ The broader point is that explainability and honesty about validation are not de
 
 # Data and Code Availability
 
-All inputs are public: Landsat 8/9 Collection 2 (USGS), Sentinel-2 (ESA), Dynamic World (Google), SRTM (NASA) and WorldPop (University of Southampton). The six yearly export scripts, the exploratory analysis, the modelling pipeline and the paper and slide builders are included in the project repository under `src/`. The exported tables (`karachi_features_<year>.csv` and `karachi_ml_<year>.csv`, 2020–2025) and the cleaned 360,000-row sample are deposited at the link given in the accompanying submission sheet; they can also be regenerated in about an hour with an approved Earth Engine account using the commands in `README.md`. Random seeds, tuned hyperparameters and the full evaluation outputs are stored in `results/` so that every number in this paper can be reproduced.
+All inputs are public: Landsat 8/9 Collection 2 (USGS), Sentinel-2 (ESA), Dynamic World (Google), SRTM (NASA) and WorldPop (University of Southampton).
+
+**Code:** https://github.com/Gotam-Dulhani/coolkarachi — the six yearly export scripts, the exploratory analysis, the modelling pipeline and the paper and slide builders are included under `src/`.
+
+**Data:** https://drive.google.com/drive/folders/1ZbUw7r6Sor7C47uXzFwsOGu8laFZ32Cg — the exported tables (`karachi_features_<year>.csv` and `karachi_ml_<year>.csv`, 2020–2025) and the cleaned 360,000-row sample.
+
+The tables can also be regenerated in about an hour with an approved Earth Engine account using the commands in `README.md`. Random seeds, tuned hyperparameters and the full evaluation outputs are stored in `results/` so that every number in this paper can be reproduced.
 
 # Appendix A. Tuned Hyperparameters
 

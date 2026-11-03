@@ -37,7 +37,11 @@ python src/01_export_features.py --years 2020 2021 2022 2023 2024 2025 --urban-o
 ```
 
 Exports are written to the Google Drive folder `karachi_uhi`; download them into
-this directory. Total wall time is roughly one hour depending on queue position.
+this directory. The archived copy used in the paper is at
+
+https://drive.google.com/drive/folders/1ZbUw7r6Sor7C47uXzFwsOGu8laFZ32Cg
+
+Total wall time is roughly one hour depending on queue position.
 
 ## Known data issues
 

@@ -7,6 +7,10 @@ Course project: **CoolKarachi — An Explainable Machine-Learning Digital Twin f
 2. Explain what drives the surface urban heat island (SUHI) using ML + SHAP.
 3. Simulate greening / cool-roof scenarios to prioritise cooling interventions.
 
+## Dataset
+
+**https://drive.google.com/drive/folders/1ZbUw7r6Sor7C47uXzFwsOGu8laFZ32Cg** — the twelve yearly exports plus the cleaned 360,000-row table (~197 MB). The CSVs are not committed to this repository; see Step 3.
+
 ## Repository layout
 ```
 .
@@ -78,7 +82,14 @@ Why two datasets: the full sample measures **urban vs rural** contrast (SUHI), w
 
 ## Step 3 — download from Google Drive
 
-Open [drive.google.com](https://drive.google.com) → folder **`karachi_uhi`** → download the files into `data/`.
+The exported tables are archived here:
+
+**https://drive.google.com/drive/folders/1ZbUw7r6Sor7C47uXzFwsOGu8laFZ32Cg**
+
+Download the twelve yearly `karachi_features_*.csv` / `karachi_ml_*.csv` files
+plus `karachi_urban_clean.csv` into `data/`.
+
+> The CSVs are not committed to this repository because they total ~197 MB.
 
 > Export tasks run in the background (minutes to ~1 hour). Check progress at
 > `https://code.earthengine.google.com/tasks`.
