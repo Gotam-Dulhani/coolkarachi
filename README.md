@@ -14,6 +14,7 @@ Course project: **CoolKarachi — An Explainable Machine-Learning Digital Twin f
 ## Repository layout
 ```
 .
+├── app.py                     # Streamlit dashboard entrypoint
 ├── src/
 │   ├── 00_check.py            # verify Earth Engine connection
 │   ├── 01_export_features.py  # build feature stack + export CSV samples to Drive
@@ -21,7 +22,8 @@ Course project: **CoolKarachi — An Explainable Machine-Learning Digital Twin f
 │   ├── 03_models.py           # 4 models, Optuna, spatial CV, SHAP, scenarios
 │   ├── 04_paper_assets.py     # LaTeX tables, heat maps, SUHI summary, table injection
 │   ├── 05_build_paper.py      # paper/paper.md -> paper/CoolKarachi.pdf
-│   └── 06_build_slides.py     # slides/CoolKarachi.pptx
+│   ├── 06_build_slides.py     # slides/CoolKarachi.pptx
+│   └── ui_*.py                # dashboard pages and shared helpers
 ├── data/                      # downloaded CSVs go here (not committed)
 ├── figures/                   # output plots
 ├── results/                   # metrics, SHAP, scenarios, cached models
@@ -31,6 +33,40 @@ Course project: **CoolKarachi — An Explainable Machine-Learning Digital Twin f
 ├── requirements.txt
 └── README.md
 ```
+
+## Streamlit dashboard
+
+A seven-page dashboard sits on top of the existing pipeline. It works from the
+committed results/figures even when the large CSVs are absent, and unlocks live
+exploration when the exports are available.
+
+```powershell
+# from the project root, with the same virtual environment
+streamlit run app.py
+```
+
+Open `http://localhost:8501`.
+
+| Page | What it does |
+|---|---|
+| **Overview** | Headline SUHI, model and intervention numbers, pipeline summary and artefact health |
+| **Data explorer** | Load `data/karachi_*.csv` or upload CSVs, filter by year/land cover/LST, plot distributions, correlations and maps, download a filtered sample |
+| **Model results** | Compare RF/XGB/LGBM/MLP across all three targets, inspect SHAP attribution and tuned hyperparameters |
+| **Cooling scenarios** | Published counterfactual results plus a live NDVI/tree/albedo simulator |
+| **Heat maps** | Per-year observed LST and local-anomaly maps, greening scenario map, SUHI chart |
+| **Methodology** | Target definitions, feature dictionary, spatial validation protocol and limitations |
+| **Paper & documents** | Render/download the paper, slides, reports and every generated figure |
+
+Notes:
+
+- The dashboard does **not** require Earth Engine authentication or a network call.
+- Data-dependent pages show the precomputed EDA figures when no CSV is loaded.
+- The live simulator uses a cached `results/model_*_<target>.joblib` if present;
+  otherwise it can train a small LightGBM surrogate from the loaded sample and
+  save it as `results/ui_surrogate_<target>.joblib`.
+- The simulator is for orientation. The paper's spatially blocked models remain
+  the validated results.
+- If `streamlit` is missing, run `pip install -r requirements.txt` first.
 
 ## Setup (Windows)
 
