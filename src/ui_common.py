@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import io
 import json
+from html import escape
 from pathlib import Path
 
+import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -73,6 +75,59 @@ SCENARIO_LABELS = {
     "cool_roof_+0.15_albedo": "Cool roof (+0.15 albedo)",
     "combined": "Combined greening + cool roof",
 }
+SCENARIO_SHORT = {
+    "greening_+10%_NDVI": "Greening",
+    "cool_roof_+0.15_albedo": "Cool roof",
+    "combined": "Combined",
+}
+
+# Shared chart palette.
+ORANGE = "#f97316"
+TEAL = "#0f766e"
+RED = "#b91c1c"
+AMBER = "#f59e0b"
+SLATE = "#64748b"
+
+
+def _coolkarachi_theme():
+    """A light, report-style Altair theme shared by every chart."""
+    return {
+        "config": {
+            "background": "transparent",
+            "font": "Inter, 'Segoe UI', system-ui, -apple-system, sans-serif",
+            "view": {"stroke": "transparent"},
+            "axis": {
+                "domainColor": "rgba(100,116,139,.35)",
+                "gridColor": "rgba(148,163,184,.18)",
+                "tickColor": "rgba(100,116,139,.35)",
+                "labelColor": SLATE,
+                "titleColor": "#475569",
+                "labelFontSize": 11,
+                "titleFontSize": 11,
+                "titleFontWeight": 600,
+                "titlePadding": 8,
+            },
+            "legend": {
+                "labelColor": SLATE,
+                "titleColor": "#475569",
+                "labelFontSize": 11,
+                "titleFontSize": 11,
+                "orient": "top",
+            },
+            "title": {
+                "fontSize": 13,
+                "fontWeight": 600,
+                "color": "#334155",
+                "anchor": "start",
+                "offset": 10,
+            },
+            "range": {"category": [ORANGE, TEAL, RED, AMBER, "#0ea5e9", SLATE, "#7c3aed"]},
+        }
+    }
+
+
+alt.themes.register("coolkarachi", _coolkarachi_theme)
+alt.themes.enable("coolkarachi")
 
 
 # --------------------------------------------------------------------------- #
@@ -82,7 +137,173 @@ def inject_css() -> None:
     st.markdown(
         """
         <style>
+        /* ---------------------------------------------------------------- shell */
+        :root {
+            --ck-orange: #f97316;
+            --ck-teal: #0f766e;
+            --ck-amber: #f59e0b;
+            --ck-slate: #64748b;
+        }
+        html, body, [class*="css"] {
+            font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+        }
+        .block-container {
+            padding-top: 1.9rem !important;
+            padding-bottom: 2.6rem !important;
+        }
+        header[data-testid="stHeader"] { background: transparent !important; }
+        [data-testid="stDecoration"] { display: none !important; }
+        [data-testid="stAppDeployButton"], .stAppDeployButton { display: none !important; }
+        #MainMenu { visibility: hidden !important; }
+
+        section[data-testid="stSidebar"] {
+            background:
+                linear-gradient(180deg, rgba(249, 115, 22, 0.055), rgba(15, 118, 110, 0.035) 42%, transparent 100%);
+            border-right: 1px solid rgba(148, 163, 184, 0.20);
+        }
+        section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+            padding-top: 0.45rem;
+        }
+
+        /* ----------------------------------------------------------------- brand */
+        .ck-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            padding: 0.15rem 0 0.4rem;
+        }
+        .ck-brand-mark {
+            width: 40px;
+            height: 40px;
+            flex: 0 0 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.18rem;
+            background: linear-gradient(135deg, #ea580c, #f59e0b);
+            box-shadow: 0 8px 18px -10px rgba(234, 88, 12, 0.9);
+        }
+        .ck-brand-name {
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+        .ck-brand-sub {
+            margin-top: 0.14rem;
+            font-size: 0.67rem;
+            letter-spacing: 0.02em;
+            opacity: 0.64;
+        }
+        .ck-side-heading {
+            margin: 0.1rem 0 0.35rem;
+            font-size: 0.67rem;
+            font-weight: 800;
+            letter-spacing: 0.13em;
+            text-transform: uppercase;
+            color: var(--ck-slate);
+        }
+        .ck-side-status {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            margin: 0.05rem 0 0.4rem;
+            font-size: 0.8rem;
+            color: #475569;
+        }
+        .ck-side-status .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--ck-amber);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
+        }
+        .ck-side-status .dot.on {
+            background: var(--ck-teal);
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+        }
+        .ck-team {
+            margin-top: 0.15rem;
+            padding: 0.7rem 0.75rem 0.6rem;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.055), rgba(15, 118, 110, 0.045));
+        }
+        .ck-team-row {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            min-height: 24px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+        .ck-team-row + .ck-team-row { margin-top: 0.3rem; }
+        .ck-team-avatar {
+            width: 22px;
+            height: 22px;
+            flex: 0 0 22px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #ea580c, #f59e0b);
+            color: #fff;
+            font-size: 0.6rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+        .ck-team-row:nth-child(2) .ck-team-avatar {
+            background: linear-gradient(135deg, #0f766e, #14b8a6);
+        }
+        .ck-team-name { font-weight: 650; }
+        .ck-team-id {
+            margin-left: auto;
+            font-size: 0.71rem;
+            opacity: 0.62;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+        }
+        .ck-team-foot {
+            margin-top: 0.55rem;
+            padding-top: 0.45rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.20);
+            font-size: 0.67rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            opacity: 0.62;
+        }
+
+        /* ---------------------------------------------------------- sidebar nav */
+        [data-testid="stRadioGroup"] { gap: 0.16rem; }
+        [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] {
+            width: 100%;
+            padding: 0.46rem 0.55rem;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            transition: background 140ms ease, border-color 140ms ease;
+        }
+        [data-testid="stRadioGroup"] label[data-testid="stRadioOption"]:hover {
+            background: rgba(249, 115, 22, 0.07);
+        }
+        [data-testid="stRadioGroup"] label[data-testid="stRadioOption"][data-selected="true"] {
+            background: rgba(249, 115, 22, 0.12);
+            border-color: rgba(249, 115, 22, 0.22);
+            box-shadow: inset 3px 0 0 var(--ck-orange);
+        }
+        [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:first-child {
+            display: none;
+        }
+        [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] p {
+            font-size: 0.86rem;
+            font-weight: 550;
+        }
+
+        /* ------------------------------------------------------------------ hero */
         .ck-hero {
+            position: relative;
+            overflow: hidden;
             border: 1px solid rgba(249, 115, 22, 0.28);
             background:
                 radial-gradient(900px 280px at 8% 0%, rgba(251, 191, 36, 0.18), transparent 62%),
@@ -90,18 +311,32 @@ def inject_css() -> None:
             border-radius: 18px;
             padding: 1.6rem 1.8rem 1.45rem;
             margin-bottom: 1.1rem;
+            box-shadow: 0 22px 48px -38px rgba(15, 23, 42, 0.65);
         }
+        .ck-hero::after {
+            content: "";
+            position: absolute;
+            width: 240px;
+            height: 240px;
+            right: -64px;
+            top: -86px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(249, 115, 22, 0.18), transparent 70%);
+            pointer-events: none;
+        }
+        .ck-hero > * { position: relative; z-index: 1; }
         .ck-hero .ck-kicker {
             text-transform: uppercase;
             letter-spacing: 0.14em;
             font-size: 0.72rem;
             font-weight: 700;
-            color: #f97316;
+            color: var(--ck-orange);
             margin-bottom: 0.35rem;
         }
         .ck-hero h1 {
-            font-size: 2.25rem;
-            line-height: 1.1;
+            font-size: clamp(2rem, 4vw, 2.55rem);
+            line-height: 1.08;
+            letter-spacing: -0.03em;
             margin: 0 0 0.5rem;
             padding: 0;
         }
@@ -117,36 +352,112 @@ def inject_css() -> None:
             opacity: 0.86;
             font-size: 0.98rem;
         }
+
+        /* --------------------------------------------------------------- sections */
         .ck-section {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
             font-size: 0.74rem;
             letter-spacing: 0.12em;
             text-transform: uppercase;
             font-weight: 700;
-            color: #f97316;
-            margin: 0.2rem 0 0.35rem;
+            color: var(--ck-orange);
+            margin: 0.2rem 0 0.45rem;
         }
+        .ck-section::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(249, 115, 22, 0.35), rgba(249, 115, 22, 0));
+        }
+
+        /* ------------------------------------------------------------------ KPIs */
         [data-testid="stMetric"] {
-            border: 1px solid rgba(128, 128, 128, 0.22);
+            min-height: 106px;
+            border: 1px solid rgba(148, 163, 184, 0.24);
             border-radius: 14px;
-            padding: 0.55rem 0.65rem;
-            background: rgba(249, 115, 22, 0.055);
+            padding: 0.6rem 0.7rem;
+            background: linear-gradient(180deg, rgba(249, 115, 22, 0.065), rgba(249, 115, 22, 0.025));
+            transition: border-color 140ms ease, transform 140ms ease;
+        }
+        [data-testid="stMetric"]:hover {
+            border-color: rgba(249, 115, 22, 0.42);
+            transform: translateY(-1px);
         }
         [data-testid="stMetricLabel"] { opacity: 0.82; }
         [data-testid="stMetricLabel"] p {
-            font-size: 0.72rem;
+            font-size: 0.71rem;
             line-height: 1.2;
             white-space: normal;
         }
-        [data-testid="stMetricValue"] { font-size: 1.3rem; }
+        [data-testid="stMetricValue"] {
+            font-size: 1.34rem;
+            font-weight: 650;
+            letter-spacing: -0.02em;
+            white-space: nowrap;
+        }
+        .ck-metrics {
+            display: grid;
+            gap: 0.65rem;
+            margin: 0.15rem 0 0.45rem;
+        }
+        .ck-kpi {
+            min-height: 94px;
+            padding: 0.62rem 0.72rem;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(249, 115, 22, 0.065), rgba(249, 115, 22, 0.025));
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: border-color 140ms ease, transform 140ms ease;
+        }
+        .ck-kpi:hover {
+            border-color: rgba(249, 115, 22, 0.42);
+            transform: translateY(-1px);
+        }
+        .ck-kpi-label {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.71rem;
+            line-height: 1.2;
+            color: #475569;
+            opacity: 0.9;
+        }
+        .ck-kpi-help {
+            width: 14px;
+            height: 14px;
+            flex: 0 0 14px;
+            border: 1px solid rgba(100, 116, 139, 0.42);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.54rem;
+            font-weight: 700;
+            color: #64748b;
+            cursor: help;
+        }
+        .ck-kpi-value {
+            margin-top: 0.2rem;
+            font-size: 1.3rem;
+            font-weight: 650;
+            letter-spacing: -0.02em;
+            white-space: nowrap;
+        }
+
+        /* ------------------------------------------------------------- callouts */
         .ck-note {
-            border-left: 4px solid #0f766e;
+            border-left: 4px solid var(--ck-teal);
             background: rgba(15, 118, 110, 0.08);
             border-radius: 0 10px 10px 0;
             padding: 0.8rem 1rem;
             font-size: 0.93rem;
         }
         .ck-warn {
-            border-left: 4px solid #f97316;
+            border-left: 4px solid var(--ck-orange);
             background: rgba(249, 115, 22, 0.08);
             border-radius: 0 10px 10px 0;
             padding: 0.8rem 1rem;
@@ -154,7 +465,7 @@ def inject_css() -> None:
         }
         .ck-pill {
             display: inline-block;
-            padding: 0.12rem 0.55rem;
+            padding: 0.14rem 0.58rem;
             border-radius: 999px;
             font-size: 0.72rem;
             font-weight: 700;
@@ -162,9 +473,81 @@ def inject_css() -> None:
             border: 1px solid rgba(128, 128, 128, 0.35);
             margin: 0 0.25rem 0.3rem 0;
         }
-        .ck-pill.ok { color: #0f766e; border-color: rgba(15, 118, 110, 0.5); }
+        .ck-pill::before {
+            content: "";
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            margin-right: 0.34rem;
+            border-radius: 50%;
+            background: currentColor;
+            vertical-align: middle;
+        }
+        .ck-pill.ok { color: var(--ck-teal); border-color: rgba(15, 118, 110, 0.5); }
         .ck-pill.missing { color: #b45309; border-color: rgba(180, 83, 9, 0.5); }
-        div[data-testid="stSidebar"] .block-container { padding-top: 1.2rem; }
+
+        /* --------------------------------------------------------------- cards */
+        .ck-card-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 0.35rem 0 0.25rem;
+        }
+        .ck-card {
+            position: relative;
+            min-height: 132px;
+            padding: 0.9rem 0.95rem 0.95rem;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(249, 115, 22, 0.055), rgba(249, 115, 22, 0));
+        }
+        .ck-card::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto 0;
+            height: 3px;
+            border-radius: 14px 14px 0 0;
+            background: linear-gradient(90deg, var(--ck-orange), var(--ck-amber));
+            opacity: 0.8;
+        }
+        .ck-card-kicker {
+            margin-bottom: 0.38rem;
+            font-size: 0.67rem;
+            font-weight: 800;
+            letter-spacing: 0.11em;
+            text-transform: uppercase;
+            color: #ea580c;
+        }
+        .ck-card-title {
+            margin-bottom: 0.28rem;
+            font-size: 0.92rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .ck-card-body {
+            font-size: 0.79rem;
+            line-height: 1.38;
+            opacity: 0.78;
+        }
+
+        /* -------------------------------------------------------- streamlit bits */
+        [data-testid="stImage"] img { border-radius: 12px; }
+        [data-testid="stDataFrame"] {
+            border: 1px solid rgba(148, 163, 184, 0.20);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        [data-testid="stExpander"] details { border-radius: 12px; }
+        .stButton > button, .stDownloadButton > button, .stLinkButton > a {
+            border-radius: 10px;
+        }
+        .stButton > button[kind="primary"], .stDownloadButton > button[kind="primary"] {
+            border: 0;
+            background: linear-gradient(135deg, #ea580c, #f59e0b);
+            color: #fff;
+        }
+        button[data-baseweb="tab"] { font-weight: 600; }
+        button[data-baseweb="tab"][aria-selected="true"] { color: #ea580c; }
+        div[data-baseweb="tab-highlight"] { background-color: var(--ck-orange); }
         </style>
         """,
         unsafe_allow_html=True,
@@ -194,6 +577,54 @@ def note(text: str) -> None:
 
 def warning(text: str) -> None:
     st.markdown(f'<div class="ck-warn">{text}</div>', unsafe_allow_html=True)
+
+
+def card_grid(items: list[tuple[str, str, str]], min_width: int = 180) -> None:
+    """Render a responsive grid of small numbered/feature cards.
+
+    Each item is ``(kicker, title, body)``.  HTML is used rather than
+    ``st.columns`` so the cards wrap cleanly on narrow screens.
+    """
+    cards = []
+    for kicker, title, body in items:
+        cards.append(
+            '<div class="ck-card">'
+            f'<div class="ck-card-kicker">{escape(str(kicker))}</div>'
+            f'<div class="ck-card-title">{escape(str(title))}</div>'
+            f'<div class="ck-card-body">{escape(str(body))}</div>'
+            "</div>"
+        )
+    st.markdown(
+        '<div class="ck-card-grid" '
+        f'style="grid-template-columns:repeat(auto-fit,minmax({int(min_width)}px,1fr));">'
+        + "".join(cards)
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def metric_grid(items: list[tuple[str, str, str]], min_width: int = 150) -> None:
+    """Responsive KPI cards: ``(label, value, help_text)``."""
+    cards = []
+    for label, value, help_text in items:
+        help_html = (
+            f'<span class="ck-kpi-help" title="{escape(str(help_text))}">?</span>'
+            if help_text
+            else ""
+        )
+        cards.append(
+            '<div class="ck-kpi">'
+            f'<div class="ck-kpi-label"><span>{escape(str(label))}</span>{help_html}</div>'
+            f'<div class="ck-kpi-value">{escape(str(value))}</div>'
+            "</div>"
+        )
+    st.markdown(
+        '<div class="ck-metrics" '
+        f'style="grid-template-columns:repeat(auto-fit,minmax({int(min_width)}px,1fr));">'
+        + "".join(cards)
+        + "</div>",
+        unsafe_allow_html=True,
+    )
 
 
 # --------------------------------------------------------------------------- #

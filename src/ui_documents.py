@@ -130,7 +130,7 @@ def _figures() -> None:
         return
     choice = st.selectbox("Figure", [p.name for p in figures], key="doc_figure")
     path = c.FIGS / choice
-    st.image(str(path), use_container_width=True)
+    st.image(str(path), width="stretch")
     _download(path, "Download PNG", "image/png", "dl_doc_figure")
 
 

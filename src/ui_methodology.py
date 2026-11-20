@@ -67,7 +67,7 @@ def _features() -> None:
         ("YEAR", "—", "Observation year", "Used only for raw LST"),
     ]
     df = pd.DataFrame(rows, columns=["Column", "Unit", "Source", "Role"])
-    st.dataframe(df, hide_index=True, use_container_width=True)
+    st.dataframe(df, hide_index=True, width="stretch")
 
     st.warning(
         "Known data issues: raw `ALBEDO` reaches 1.94 and is clipped to 0.02–0.65; "
@@ -79,17 +79,15 @@ def _features() -> None:
 
 def _validation() -> None:
     st.markdown("### Spatial validation protocol")
-    cols = st.columns(4)
-    steps = [
-        ("2 km blocks", "The city is partitioned into 0.02° tiles — about 701 blocks in the built-up sample."),
-        ("20% held out", "Blocks, not rows, are split: 303,387 training rows and 56,613 test rows."),
-        ("Optuna inside CV", "Hyperparameters are tuned with 3-fold GroupKFold on training blocks only."),
-        ("No leakage", "No test pixel is adjacent to a training pixel, so the error estimate is honest."),
-    ]
-    for col, (head, body) in zip(cols, steps):
-        with col:
-            st.markdown(f"**{head}**")
-            st.caption(body)
+    c.card_grid(
+        [
+            ("01", "2 km blocks", "The city is partitioned into 0.02° tiles — about 701 blocks in the built-up sample."),
+            ("02", "20% held out", "Blocks, not rows, are split: 303,387 training rows and 56,613 test rows."),
+            ("03", "Optuna inside CV", "Hyperparameters are tuned with 3-fold GroupKFold on training blocks only."),
+            ("04", "No leakage", "No test pixel is adjacent to a training pixel, so the error estimate is honest."),
+        ],
+        min_width=190,
+    )
 
     st.write("")
     c.note(
@@ -109,7 +107,7 @@ def _validation() -> None:
         ],
         columns=["Model", "Mechanism", "Why it is included"],
     )
-    st.dataframe(models, hide_index=True, use_container_width=True)
+    st.dataframe(models, hide_index=True, width="stretch")
 
 
 def _explainability() -> None:

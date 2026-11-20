@@ -35,7 +35,7 @@ def _heatmaps() -> None:
     with col1:
         year = st.selectbox("Year", years, index=len(years) - 1, key="heatmap_year")
     path = c.FIGS / f"heatmap_{year}.png"
-    st.image(str(path), use_container_width=True)
+    st.image(str(path), width="stretch")
     st.caption(
         "Left: absolute LST (°C). Right: local anomaly (LST minus the 2 km block-year "
         "mean). The anomaly panel is the decision-relevant view — it shows which pixels "
@@ -50,7 +50,7 @@ def _heatmaps() -> None:
     for col, y in ((col1, first), (col2, last)):
         p = c.FIGS / f"heatmap_{y}.png"
         if p.exists():
-            col.image(str(p), caption=f"{y}", use_container_width=True)
+            col.image(str(p), caption=f"{y}", width="stretch")
 
 
 def _scenario_map() -> None:
@@ -58,7 +58,7 @@ def _scenario_map() -> None:
     if not path.exists():
         st.info("Scenario map not found. Run `python src/03_models.py` to create it.")
         return
-    st.image(str(path), use_container_width=True)
+    st.image(str(path), width="stretch")
     st.caption(
         "Predicted cooling from +0.10 NDVI greening on the held-out test sample. "
         "The map is a point cloud at 30 m pixel centroids, coloured by ΔLST."
@@ -82,11 +82,14 @@ def _suhi() -> None:
 
     if not pooled.empty:
         row = pooled.iloc[0]
-        cols = st.columns(4)
-        cols[0].metric("Urban mean LST", f"{row['lst_urban_C']:.2f} °C")
-        cols[1].metric("Rural mean LST", f"{row['lst_rural_C']:.2f} °C")
-        cols[2].metric("Pooled SUHI", f"{row['suhi_C']:+.2f} °C")
-        cols[3].metric("Urban / rural pixels", f"{int(row['n_urban']):,} / {int(row['n_rural']):,}")
+        c.metric_grid(
+            [
+                ("Urban mean LST", f"{row['lst_urban_C']:.2f} °C", "Mean LST of built-up pixels, all years pooled."),
+                ("Rural mean LST", f"{row['lst_rural_C']:.2f} °C", "Mean LST of the rural desert reference."),
+                ("Pooled SUHI", f"{row['suhi_C']:+.2f} °C", "Urban minus rural LST; negative means the rural reference is hotter."),
+                ("Urban / rural pixels", f"{int(row['n_urban']):,} / {int(row['n_rural']):,}", "Sample sizes behind the pooled contrast."),
+            ]
+        )
 
     bars = (
         alt.Chart(per_year)
@@ -94,7 +97,7 @@ def _suhi() -> None:
         .encode(
             x=alt.X("period:N", title="Year", axis=alt.Axis(labelAngle=0)),
             y=alt.Y("suhi_C:Q", title="Urban − rural LST (°C)"),
-            color=alt.condition(alt.datum.suhi_C < 0, alt.value("#0f766e"), alt.value("#b91c1c")),
+            color=alt.condition(alt.datum.suhi_C < 0, alt.value(c.TEAL), alt.value(c.RED)),
             tooltip=[
                 alt.Tooltip("period:N", title="Year"),
                 alt.Tooltip("suhi_C:Q", title="SUHI (°C)", format="+.2f"),
@@ -104,12 +107,16 @@ def _suhi() -> None:
         )
         .properties(height=360, title="Surface urban heat island by year")
     )
-    rule = alt.Chart(pd.DataFrame({"y": [0]})).mark_rule(color="#666").encode(y="y:Q")
-    st.altair_chart(bars + rule, use_container_width=True)
+    rule = (
+        alt.Chart(pd.DataFrame({"y": [0]}))
+        .mark_rule(color="#94a3b8", strokeDash=[3, 3])
+        .encode(y="y:Q")
+    )
+    st.altair_chart(bars + rule, width="stretch")
 
     image = c.FIGS / "suhi_annual.png"
     if image.exists():
-        st.image(str(image), use_container_width=True)
+        st.image(str(image), width="stretch")
         _download_image(image)
 
     c.warning(
@@ -128,7 +135,7 @@ def _library() -> None:
     names = [p.name for p in figures]
     choice = st.selectbox("Figure", names, key="figure_library")
     path = c.FIGS / choice
-    st.image(str(path), use_container_width=True)
+    st.image(str(path), width="stretch")
     _download_image(path)
     st.caption(f"`figures/{choice}`")
 

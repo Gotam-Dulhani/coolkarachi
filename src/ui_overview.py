@@ -38,35 +38,29 @@ def render() -> None:
     scenarios = c.load_csv(c.RESULTS / "scenarios_local.csv")
 
     # ------------------------------------------------------------------ KPIs
-    cols = st.columns(4)
-    if pooled is not None:
-        cols[0].metric(
-            "SUHI (°C)",
-            c.fmt_metric(pooled.get("suhi_C"), 2, signed=True),
-            help="Urban minus rural LST. Negative means the rural desert reference is hotter than the built-up surface.",
-        )
-        cols[1].metric(
-            "Urban LST (°C)",
-            c.fmt_metric(pooled.get("lst_urban_C"), 1),
-            help="Built-up pixels, May–June 2020–2025.",
-        )
-    else:
-        cols[0].metric("SUHI (°C)", "—")
-        cols[1].metric("Urban LST (°C)", "—")
-
-    if best_local is not None:
-        cols[2].metric(
-            "Best RMSE (°C)",
-            c.fmt_metric(best_local["RMSE"], 3),
-            help=f"{best_local['model']} on held-out 2 km spatial blocks.",
-        )
-    else:
-        cols[2].metric("Best RMSE (°C)", "—")
-
-    cols[3].metric(
-        "Years",
-        f"{len(years_df)}" if not years_df.empty else "6",
-        help="2020–2025, May–June only.",
+    c.metric_grid(
+        [
+            (
+                "SUHI",
+                f"{c.fmt_metric(pooled.get('suhi_C'), 2, signed=True)} °C" if pooled is not None else "—",
+                "Urban minus rural LST. Negative means the rural desert reference is hotter than the built-up surface.",
+            ),
+            (
+                "Urban LST",
+                f"{c.fmt_metric(pooled.get('lst_urban_C'), 1)} °C" if pooled is not None else "—",
+                "Mean built-up surface temperature, May–June 2020–2025.",
+            ),
+            (
+                "Best RMSE",
+                f"{c.fmt_metric(best_local['RMSE'], 3)} °C" if best_local is not None else "—",
+                f"{best_local['model']} on held-out 2 km spatial blocks." if best_local is not None else c.METRIC_HELP["RMSE"],
+            ),
+            (
+                "Years",
+                f"{len(years_df)}" if not years_df.empty else "6",
+                "2020–2025, May–June only.",
+            ),
+        ]
     )
 
     st.write("")
@@ -79,28 +73,53 @@ def render() -> None:
         if pooled is not None and years_df is not None and not years_df.empty:
             chart_df = years_df.copy()
             chart_df["suhi_C"] = pd.to_numeric(chart_df["suhi_C"], errors="coerce")
-            bars = (
-                alt.Chart(chart_df)
-                .mark_bar(cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
-                .encode(
-                    x=alt.X("period:N", title="Year", axis=alt.Axis(labelAngle=0)),
-                    y=alt.Y("suhi_C:Q", title="SUHI (°C)"),
-                    color=alt.condition(
-                        alt.datum.suhi_C < 0,
-                        alt.value(TEAL),
-                        alt.value(RED),
-                    ),
-                    tooltip=[
-                        alt.Tooltip("period:N", title="Year"),
-                        alt.Tooltip("suhi_C:Q", title="SUHI (°C)", format="+.2f"),
-                        alt.Tooltip("lst_urban_C:Q", title="Urban LST", format=".2f"),
-                        alt.Tooltip("lst_rural_C:Q", title="Rural LST", format=".2f"),
-                    ],
-                )
-                .properties(height=285, title="Surface urban heat island by year")
+            lo = min(0.0, float(chart_df["suhi_C"].min())) - 0.18
+            hi = max(0.0, float(chart_df["suhi_C"].max())) + 0.18
+            base = alt.Chart(chart_df).encode(
+                x=alt.X("period:N", title="Year", axis=alt.Axis(labelAngle=0)),
+                y=alt.Y(
+                    "suhi_C:Q",
+                    title="SUHI (°C)",
+                    scale=alt.Scale(domain=[lo, hi]),
+                ),
             )
-            rule = alt.Chart(pd.DataFrame({"y": [0]})).mark_rule(color="#666").encode(y="y:Q")
-            st.altair_chart(bars + rule, use_container_width=True)
+            bars = base.mark_bar(cornerRadiusTopLeft=3, cornerRadiusTopRight=3).encode(
+                color=alt.condition(
+                    alt.datum.suhi_C < 0,
+                    alt.value(TEAL),
+                    alt.value(RED),
+                ),
+                tooltip=[
+                    alt.Tooltip("period:N", title="Year"),
+                    alt.Tooltip("suhi_C:Q", title="SUHI (°C)", format="+.2f"),
+                    alt.Tooltip("lst_urban_C:Q", title="Urban LST", format=".2f"),
+                    alt.Tooltip("lst_rural_C:Q", title="Rural LST", format=".2f"),
+                ],
+            )
+            neg_labels = (
+                base.transform_filter(alt.datum.suhi_C < 0)
+                .mark_text(dy=11, fontSize=10, color="#475569")
+                .encode(text=alt.Text("suhi_C:Q", format="+.2f"))
+            )
+            pos_labels = (
+                base.transform_filter(alt.datum.suhi_C >= 0)
+                .mark_text(dy=-9, fontSize=10, color="#475569")
+                .encode(text=alt.Text("suhi_C:Q", format="+.2f"))
+            )
+            rule = (
+                alt.Chart(pd.DataFrame({"y": [0]}))
+                .mark_rule(color="#94a3b8", strokeDash=[3, 3])
+                .encode(y="y:Q")
+            )
+            chart = (bars + neg_labels + pos_labels + rule).properties(
+                height=285,
+                title="Surface urban heat island by year",
+            )
+            st.altair_chart(chart, width="stretch")
+            st.caption(
+                "Negative SUHI is drawn below the zero line: the inland desert reference "
+                "is hotter than the built-up surface."
+            )
             c.note(
                 f"Karachi's surface heat island is <b>negative</b>: "
                 f"{c.fmt_metric(pooled['suhi_C'], 2, signed=True)} °C pooled. "
@@ -118,31 +137,39 @@ def render() -> None:
             sc["label"] = sc["scenario"].map(c.SCENARIO_LABELS).fillna(
                 sc["scenario"].str.replace("_", " ")
             )
-            short = {
-                "greening_+10%_NDVI": "Greening",
-                "cool_roof_+0.15_albedo": "Cool roof",
-                "combined": "Combined",
-            }
-            sc["short"] = sc["scenario"].map(short).fillna(sc["label"])
+            sc["short"] = sc["scenario"].map(c.SCENARIO_SHORT).fillna(sc["label"])
             sc = sc.sort_values("mean_delta_C")
-            chart = (
-                alt.Chart(sc)
-                .mark_bar(cornerRadiusEnd=4)
-                .encode(
-                    y=alt.Y("short:N", title=None, sort="x"),
-                    x=alt.X("mean_delta_C:Q", title="Mean ΔLST (°C)"),
-                    color=alt.condition(
-                        alt.datum.mean_delta_C < 0, alt.value(TEAL), alt.value(RED)
-                    ),
-                    tooltip=[
-                        alt.Tooltip("label:N", title="Scenario"),
-                        alt.Tooltip("mean_delta_C:Q", title="Mean ΔLST", format="+.2f"),
-                        alt.Tooltip("pct_cooling_gt_1C:Q", title="% < −1 °C", format=".1f"),
-                    ],
-                )
-                .properties(height=285, title="Scenario cooling")
+            lo = min(0.0, float(sc["mean_delta_C"].min())) - 0.08
+            hi = max(0.0, float(sc["mean_delta_C"].max())) + 0.08
+            base = alt.Chart(sc).encode(
+                y=alt.Y("short:N", title=None, sort="x"),
+                x=alt.X(
+                    "mean_delta_C:Q",
+                    title="Mean ΔLST (°C)",
+                    scale=alt.Scale(domain=[lo, hi]),
+                ),
             )
-            st.altair_chart(chart, use_container_width=True)
+            bars = base.mark_bar(cornerRadiusEnd=4).encode(
+                color=alt.condition(
+                    alt.datum.mean_delta_C < 0, alt.value(TEAL), alt.value(RED)
+                ),
+                tooltip=[
+                    alt.Tooltip("label:N", title="Scenario"),
+                    alt.Tooltip("mean_delta_C:Q", title="Mean ΔLST", format="+.2f"),
+                    alt.Tooltip("pct_cooling_gt_1C:Q", title="% < −1 °C", format=".1f"),
+                ],
+            )
+            rule = (
+                alt.Chart(pd.DataFrame({"x": [0]}))
+                .mark_rule(color="#94a3b8", strokeDash=[3, 3])
+                .encode(x="x:Q")
+            )
+            chart = (bars + rule).properties(
+                height=285,
+                title="Scenario cooling",
+            )
+            st.altair_chart(chart, width="stretch")
+            st.caption("Cooling is negative ΔLST, so bars extend left of the zero line.")
             if len(sc):
                 best = sc.iloc[0]
                 st.caption(
@@ -157,18 +184,16 @@ def render() -> None:
 
     # ----------------------------------------------------------- how it works
     c.section("How the twin is built")
-    steps = st.columns(5)
-    step_text = [
-        ("01", "Earth Engine stack", "Landsat LST, Sentinel-2 indices, Dynamic World fractions, SRTM, WorldPop."),
-        ("02", "Two samples", "360k built-up points for ML; full-cover sample for the urban–rural contrast."),
-        ("03", "Spatial validation", "2 km blocks, 20% held out, Optuna tuned inside GroupKFold."),
-        ("04", "Explain + perturb", "SHAP attribution and counterfactual greening / cool-roof scenarios."),
-        ("05", "Decision support", "Neighbourhood-relative heat maps and cooling priorities."),
-    ]
-    for col, (num, head, body) in zip(steps, step_text):
-        with col:
-            st.markdown(f"**{num} · {head}**")
-            st.caption(body)
+    c.card_grid(
+        [
+            ("01", "Earth Engine stack", "Landsat LST, Sentinel-2 indices, Dynamic World fractions, SRTM and WorldPop."),
+            ("02", "Two samples", "360k built-up points for ML; a full-cover sample for the urban–rural contrast."),
+            ("03", "Spatial validation", "2 km blocks, 20% held out, Optuna tuned inside GroupKFold."),
+            ("04", "Explain + perturb", "SHAP attribution and counterfactual greening / cool-roof scenarios."),
+            ("05", "Decision support", "Neighbourhood-relative heat maps and cooling priorities."),
+        ],
+        min_width=170,
+    )
 
     st.divider()
 
@@ -207,7 +232,7 @@ def render() -> None:
         status["Found"] = status["Found"].apply(
             lambda v: f"✓ {v}" if v else "— missing"
         )
-        st.dataframe(status, hide_index=True, use_container_width=True)
+        st.dataframe(status, hide_index=True, width="stretch")
         st.caption(
             "CSV exports and fitted `.joblib` models are git-ignored. "
             "Load them in **Data explorer** to unlock the live what-if simulator."

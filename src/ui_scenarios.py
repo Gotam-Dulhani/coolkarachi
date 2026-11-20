@@ -35,39 +35,55 @@ def _precomputed() -> None:
 
     df = df.copy()
     df["label"] = df["scenario"].map(c.SCENARIO_LABELS).fillna(df["scenario"].str.replace("_", " "))
+    df["short"] = df["scenario"].map(c.SCENARIO_SHORT).fillna(df["label"])
     best = df.sort_values("mean_delta_C").iloc[0]
 
-    kpis = st.columns(4)
-    kpis[0].metric("Strongest mean cooling", f"{best['mean_delta_C']:+.2f} °C")
-    kpis[1].metric("Median ΔLST", f"{best['median_delta_C']:+.2f} °C")
-    kpis[2].metric("Pixels < −0.5 °C", f"{best['pct_cooling_gt_0.5C']:.1f}%")
-    kpis[3].metric("Pixels < −1.0 °C", f"{best['pct_cooling_gt_1C']:.1f}%")
+    c.metric_grid(
+        [
+            ("Mean ΔLST", f"{best['mean_delta_C']:+.2f} °C", "Average change for the strongest published scenario."),
+            ("Median ΔLST", f"{best['median_delta_C']:+.2f} °C", "Median per-pixel change for that scenario."),
+            ("Pixels < −0.5 °C", f"{best['pct_cooling_gt_0.5C']:.1f}%", "Share of held-out pixels cooling by more than 0.5 °C."),
+            ("Pixels < −1.0 °C", f"{best['pct_cooling_gt_1C']:.1f}%", "Share of held-out pixels cooling by more than 1 °C."),
+        ]
+    )
     st.caption(f"Best scenario: **{best['label']}**")
 
     col1, col2 = st.columns(2)
     with col1:
-        chart = (
-            alt.Chart(df)
-            .mark_bar(cornerRadiusEnd=4)
-            .encode(
-                y=alt.Y("label:N", title=None, sort="x"),
-                x=alt.X("mean_delta_C:Q", title="Mean ΔLST (°C)"),
-                color=alt.condition(
-                    alt.datum.mean_delta_C < 0, alt.value("#0f766e"), alt.value("#b91c1c")
-                ),
-                tooltip=[
-                    alt.Tooltip("label:N", title="Scenario"),
-                    alt.Tooltip("mean_delta_C:Q", title="Mean ΔLST", format="+.2f"),
-                    alt.Tooltip("median_delta_C:Q", title="Median ΔLST", format="+.2f"),
-                ],
-            )
-            .properties(height=300, title="Mean temperature change")
+        lo = min(0.0, float(df["mean_delta_C"].min())) - 0.08
+        hi = max(0.0, float(df["mean_delta_C"].max())) + 0.08
+        base = alt.Chart(df).encode(
+            y=alt.Y("short:N", title=None, sort="x"),
+            x=alt.X(
+                "mean_delta_C:Q",
+                title="Mean ΔLST (°C)",
+                scale=alt.Scale(domain=[lo, hi]),
+            ),
         )
-        st.altair_chart(chart, use_container_width=True)
+        bars = base.mark_bar(cornerRadiusEnd=4).encode(
+            color=alt.condition(
+                alt.datum.mean_delta_C < 0, alt.value(c.TEAL), alt.value(c.RED)
+            ),
+            tooltip=[
+                alt.Tooltip("label:N", title="Scenario"),
+                alt.Tooltip("mean_delta_C:Q", title="Mean ΔLST", format="+.2f"),
+                alt.Tooltip("median_delta_C:Q", title="Median ΔLST", format="+.2f"),
+            ],
+        )
+        rule = (
+            alt.Chart(pd.DataFrame({"x": [0]}))
+            .mark_rule(color="#94a3b8", strokeDash=[3, 3])
+            .encode(x="x:Q")
+        )
+        chart = (bars + rule).properties(
+            height=300,
+            title="Mean temperature change",
+        )
+        st.altair_chart(chart, width="stretch")
 
     with col2:
         long = df.melt(
-            id_vars=["label"],
+            id_vars=["short", "label"],
             value_vars=["pct_cooling_gt_0.5C", "pct_cooling_gt_1C"],
             var_name="threshold",
             value_name="percent",
@@ -77,12 +93,15 @@ def _precomputed() -> None:
         )
         chart = (
             alt.Chart(long)
-            .mark_bar()
+            .mark_bar(cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
             .encode(
                 x=alt.X("threshold:N", title=None),
                 y=alt.Y("percent:Q", title="% of test pixels"),
-                color=alt.Color("threshold:N", legend=None),
-                xOffset="label:N",
+                color=alt.Color(
+                    "threshold:N",
+                    legend=alt.Legend(title=None, orient="top", symbolType="square"),
+                ),
+                xOffset=alt.X("short:N", title=None),
                 tooltip=[
                     alt.Tooltip("label:N", title="Scenario"),
                     alt.Tooltip("threshold:N", title="Threshold"),
@@ -91,12 +110,12 @@ def _precomputed() -> None:
             )
             .properties(height=300, title="Share of pixels crossing a cooling threshold")
         )
-        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, width="stretch")
 
     st.dataframe(
         df[["label", "mean_delta_C", "median_delta_C", "pct_cooling_gt_0.5C", "pct_cooling_gt_1C"]],
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         column_config={
             "label": "Scenario",
             "mean_delta_C": st.column_config.NumberColumn("Mean ΔLST (°C)", format="%+.2f"),
@@ -170,7 +189,7 @@ def _model_for_target(target: str, df: pd.DataFrame):
     with col2:
         st.write("")
         st.write("")
-        train = st.button("Train quick surrogate", type="primary", use_container_width=True)
+        train = st.button("Train quick surrogate", type="primary", width="stretch")
     if train:
         with st.spinner("Fitting LightGBM on the loaded sample…"):
             try:
@@ -249,11 +268,14 @@ def _simulator() -> None:
     metrics = c.scenario_metrics(delta)
 
     st.write("")
-    kpis = st.columns(4)
-    kpis[0].metric("Mean ΔLST", f"{metrics['mean_delta']:+.2f} °C")
-    kpis[1].metric("Median ΔLST", f"{metrics['median_delta']:+.2f} °C")
-    kpis[2].metric("Pixels < −0.5 °C", f"{metrics['pct_cool_05']:.1f}%")
-    kpis[3].metric("Pixels < −1.0 °C", f"{metrics['pct_cool_10']:.1f}%")
+    c.metric_grid(
+        [
+            ("Mean ΔLST", f"{metrics['mean_delta']:+.2f} °C", "Average predicted change over the sampled pixels."),
+            ("Median ΔLST", f"{metrics['median_delta']:+.2f} °C", "Median predicted change over the sampled pixels."),
+            ("Pixels < −0.5 °C", f"{metrics['pct_cool_05']:.1f}%", "Share of sampled pixels cooling by more than 0.5 °C."),
+            ("Pixels < −1.0 °C", f"{metrics['pct_cool_10']:.1f}%", "Share of sampled pixels cooling by more than 1 °C."),
+        ]
+    )
 
     if metrics["mean_delta"] < 0:
         c.note(
@@ -302,7 +324,7 @@ def _simulator() -> None:
             )
             .properties(height=520, title="Predicted change on the loaded sample")
         )
-        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, width="stretch")
         st.caption("Blue = cooling, red = warming. Point cloud in geographic coordinates.")
 
     export = baseline[["LON", "LAT", "LST"]].copy() if {"LON", "LAT", "LST"}.issubset(baseline.columns) else pd.DataFrame()

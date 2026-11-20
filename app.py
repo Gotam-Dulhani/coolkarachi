@@ -54,6 +54,15 @@ PAGES = {
     "Methodology": ui_methodology.render,
     "Paper & documents": ui_documents.render,
 }
+PAGE_ICONS = {
+    "Overview": "◉",
+    "Data explorer": "▦",
+    "Model results": "▤",
+    "Cooling scenarios": "❄",
+    "Heat maps": "▧",
+    "Methodology": "◇",
+    "Paper & documents": "▣",
+}
 
 
 def _go_to_explorer() -> None:
@@ -62,8 +71,16 @@ def _go_to_explorer() -> None:
 
 def _sidebar() -> str:
     with st.sidebar:
-        st.markdown("## 🌡️ CoolKarachi")
-        st.caption("Explainable ML digital twin · 30 m surface heat · 2020–2025")
+        st.markdown(
+            '<div class="ck-brand">'
+            '<div class="ck-brand-mark">🌡️</div>'
+            "<div>"
+            '<div class="ck-brand-name">CoolKarachi</div>'
+            '<div class="ck-brand-sub">30 m surface heat · 2020–2025</div>'
+            "</div>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
         st.divider()
 
         page = st.radio(
@@ -71,40 +88,79 @@ def _sidebar() -> str:
             list(PAGES),
             label_visibility="collapsed",
             key="ck_nav",
+            format_func=lambda p: f"{PAGE_ICONS[p]}  {p}",
         )
 
         st.divider()
-        st.markdown("**Session data**")
+        st.markdown(
+            '<div class="ck-side-heading">Session data</div>',
+            unsafe_allow_html=True,
+        )
         df = c.get_dataset()
         if df is not None:
-            st.success(f"{len(df):,} rows × {df.shape[1]} columns")
+            st.markdown(
+                '<div class="ck-side-status">'
+                '<span class="dot on"></span>'
+                f"{len(df):,} rows × {df.shape[1]} columns"
+                "</div>",
+                unsafe_allow_html=True,
+            )
             source = c.get_dataset_source()
             if source:
                 st.caption(source)
-            if st.button("Clear loaded data", use_container_width=True):
+            if st.button("Clear loaded data", width="stretch"):
                 c.clear_dataset()
                 st.rerun()
         else:
-            st.caption("No CSV loaded. Data-dependent pages fall back to committed results.")
+            st.markdown(
+                '<div class="ck-side-status">'
+                '<span class="dot"></span>No dataset loaded'
+                "</div>",
+                unsafe_allow_html=True,
+            )
+            st.caption("Data-dependent pages fall back to committed results.")
             st.button(
                 "Go to Data explorer",
-                use_container_width=True,
+                width="stretch",
+                type="primary",
                 on_click=_go_to_explorer,
             )
 
         st.divider()
-        st.markdown("**Project**")
+        st.markdown(
+            '<div class="ck-side-heading">Project</div>',
+            unsafe_allow_html=True,
+        )
         st.link_button(
             "GitHub repository",
             "https://github.com/Gotam-Dulhani/coolkarachi",
-            use_container_width=True,
+            width="stretch",
         )
         st.link_button(
             "Dataset (Google Drive)",
             "https://drive.google.com/drive/folders/1ZbUw7r6Sor7C47uXzFwsOGu8laFZ32Cg",
-            use_container_width=True,
+            width="stretch",
         )
-        st.caption("Gotam Dulhani · Mohat Kumar · FAST-NUCES Karachi")
+        st.markdown(
+            '<div class="ck-side-heading" style="margin-top:.65rem;">Authors</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<div class="ck-team">'
+            '<div class="ck-team-row">'
+            '<span class="ck-team-avatar">GD</span>'
+            '<span class="ck-team-name">Gotam Dulhani</span>'
+            '<span class="ck-team-id">23I-0545</span>'
+            "</div>"
+            '<div class="ck-team-row">'
+            '<span class="ck-team-avatar">MK</span>'
+            '<span class="ck-team-name">Mohat Kumar</span>'
+            '<span class="ck-team-id">23K-0894</span>'
+            "</div>"
+            '<div class="ck-team-foot">FAST-NUCES Karachi</div>'
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
     return page
 

@@ -110,7 +110,7 @@ def _histogram(df: pd.DataFrame, column: str) -> None:
         )
         .properties(height=320)
     )
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width="stretch")
     st.caption(
         f"n = {len(series):,} · mean {series.mean():.2f} · median {series.median():.2f} "
         f"· SD {series.std():.2f} · min {series.min():.2f} · max {series.max():.2f}"
@@ -145,7 +145,7 @@ def _correlation(df: pd.DataFrame) -> None:
         )
         .properties(height=520)
     )
-    st.altair_chart(heat, use_container_width=True)
+    st.altair_chart(heat, width="stretch")
 
 
 def _scatter(df: pd.DataFrame, x: str, y: str) -> None:
@@ -164,7 +164,7 @@ def _scatter(df: pd.DataFrame, x: str, y: str) -> None:
         )
         .properties(height=420)
     )
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width="stretch")
     st.caption(f"Random sample of {len(sample):,} rows.")
 
 
@@ -186,7 +186,7 @@ def _eda_gallery() -> None:
         path = c.FIGS / name
         if path.exists():
             with cols[i % 2]:
-                st.image(str(path), caption=caption, use_container_width=True)
+                st.image(str(path), caption=caption, width="stretch")
 
 
 def _filters(df: pd.DataFrame) -> pd.DataFrame:
@@ -239,7 +239,7 @@ def _dataset_view(df: pd.DataFrame) -> None:
     st.success(f"**{len(df):,} rows × {df.shape[1]} columns** loaded from {source}")
     col1, col2 = st.columns([5, 1])
     with col2:
-        if st.button("Clear data", use_container_width=True):
+        if st.button("Clear data", width="stretch"):
             c.clear_dataset()
             st.rerun()
 
@@ -248,16 +248,22 @@ def _dataset_view(df: pd.DataFrame) -> None:
         st.warning("No rows match the current filters.")
         return
 
-    kpis = st.columns(5)
-    kpis[0].metric("Rows", c.fmt_int(len(filtered)))
+    kpis = [("Rows", c.fmt_int(len(filtered)), "Rows remaining after the current filters.")]
     if "LST" in filtered.columns:
-        kpis[1].metric("Mean LST", f"{pd.to_numeric(filtered['LST'], errors='coerce').mean():.2f} °C")
+        kpis.append(
+            ("Mean LST", f"{pd.to_numeric(filtered['LST'], errors='coerce').mean():.2f} °C", "Mean land surface temperature.")
+        )
     if "NDVI" in filtered.columns:
-        kpis[2].metric("Mean NDVI", f"{pd.to_numeric(filtered['NDVI'], errors='coerce').mean():.3f}")
+        kpis.append(
+            ("Mean NDVI", f"{pd.to_numeric(filtered['NDVI'], errors='coerce').mean():.3f}", "Mean vegetation index.")
+        )
     if "NDBI" in filtered.columns:
-        kpis[3].metric("Mean NDBI", f"{pd.to_numeric(filtered['NDBI'], errors='coerce').mean():.3f}")
+        kpis.append(
+            ("Mean NDBI", f"{pd.to_numeric(filtered['NDBI'], errors='coerce').mean():.3f}", "Mean built-up index.")
+        )
     if "YEAR" in filtered.columns:
-        kpis[4].metric("Years", c.fmt_int(filtered["YEAR"].nunique()))
+        kpis.append(("Years", c.fmt_int(filtered["YEAR"].nunique()), "Distinct observation years."))
+    c.metric_grid(kpis)
 
     st.write("")
     tab_dist, tab_rel, tab_map, tab_table = st.tabs(
@@ -281,7 +287,28 @@ def _dataset_view(df: pd.DataFrame) -> None:
                 .mean()
             )
             yearly["Year"] = yearly["YEAR"].astype(int).astype(str)
-            st.line_chart(yearly, x="Year", y="LST", height=260)
+            line = (
+                alt.Chart(yearly)
+                .mark_line(
+                    color=c.TEAL,
+                    strokeWidth=2.4,
+                    point=alt.OverlayMarkDef(size=52, filled=True, color=c.TEAL),
+                )
+                .encode(
+                    x=alt.X("Year:O", title=None, axis=alt.Axis(labelAngle=0)),
+                    y=alt.Y(
+                        "LST:Q",
+                        title="Mean LST (°C)",
+                        scale=alt.Scale(zero=False),
+                    ),
+                    tooltip=[
+                        alt.Tooltip("Year:O", title="Year"),
+                        alt.Tooltip("LST:Q", title="Mean LST (°C)", format=".2f"),
+                    ],
+                )
+                .properties(height=260)
+            )
+            st.altair_chart(line, width="stretch")
         if "LULC" in filtered.columns and "LST" in filtered.columns:
             st.markdown("**Mean LST by land-cover class**")
             by_lulc = (
@@ -295,7 +322,25 @@ def _dataset_view(df: pd.DataFrame) -> None:
             by_lulc["Class"] = by_lulc["LULC"].map(
                 lambda v: c.LULC_NAMES.get(int(v), str(int(v))) if pd.notna(v) else "—"
             )
-            st.bar_chart(by_lulc, x="Class", y="LST", height=320)
+            bars = (
+                alt.Chart(by_lulc)
+                .mark_bar(cornerRadiusEnd=4, color=c.ORANGE)
+                .encode(
+                    y=alt.Y(
+                        "Class:N",
+                        title=None,
+                        sort="-x",
+                        axis=alt.Axis(labelLimit=150),
+                    ),
+                    x=alt.X("LST:Q", title="Mean LST (°C)"),
+                    tooltip=[
+                        alt.Tooltip("Class:N", title="Land cover"),
+                        alt.Tooltip("LST:Q", title="Mean LST (°C)", format=".2f"),
+                    ],
+                )
+                .properties(height=320)
+            )
+            st.altair_chart(bars, width="stretch")
 
     with tab_rel:
         numeric = [
@@ -350,7 +395,7 @@ def _dataset_view(df: pd.DataFrame) -> None:
                     )
                     .properties(height=600)
                 )
-                st.altair_chart(scatter, use_container_width=True)
+                st.altair_chart(scatter, width="stretch")
                 st.caption(
                     f"{len(sample):,} of {len(filtered):,} pixels. This is a point cloud in "
                     "geographic coordinates, not a tiled basemap; use **Heat maps** for the "
@@ -371,9 +416,9 @@ def _dataset_view(df: pd.DataFrame) -> None:
                 .reset_index()
                 .rename(columns={"index": "Column"})
             )
-            st.dataframe(summary, hide_index=True, use_container_width=True)
+            st.dataframe(summary, hide_index=True, width="stretch")
         st.markdown("**Preview (first 5,000 rows)**")
-        st.dataframe(filtered.head(5000), hide_index=True, use_container_width=True, height=420)
+        st.dataframe(filtered.head(5000), hide_index=True, width="stretch", height=420)
         st.download_button(
             "Download filtered CSV",
             filtered.to_csv(index=False).encode("utf-8"),

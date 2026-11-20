@@ -37,11 +37,14 @@ def _comparison(target: str) -> None:
     df = df.sort_values("RMSE").reset_index(drop=True)
     best = df.iloc[0]
 
-    kpis = st.columns(4)
-    kpis[0].metric("Best model", str(best["model"]))
-    kpis[1].metric("RMSE", f"{best['RMSE']:.3f} °C", help=c.METRIC_HELP["RMSE"])
-    kpis[2].metric("R²", f"{best['R2']:.3f}", help=c.METRIC_HELP["R2"])
-    kpis[3].metric("Mean bias", f"{best['MBE']:+.3f} °C", help=c.METRIC_HELP["MBE"])
+    c.metric_grid(
+        [
+            ("Best model", str(best["model"]), "Lowest held-out RMSE for this target."),
+            ("RMSE", f"{best['RMSE']:.3f} °C", c.METRIC_HELP["RMSE"]),
+            ("R²", f"{best['R2']:.3f}", c.METRIC_HELP["R2"]),
+            ("Mean bias", f"{best['MBE']:+.3f} °C", c.METRIC_HELP["MBE"]),
+        ]
+    )
 
     st.caption(
         f"Held-out evaluation on {c.fmt_int(best['n'])} pixels from spatially disjoint "
@@ -51,13 +54,13 @@ def _comparison(target: str) -> None:
     col1, col2 = st.columns(2)
     with col1:
         st.altair_chart(
-            _metric_chart(df, "RMSE", "#f97316", "RMSE (°C)"),
-            use_container_width=True,
+            _metric_chart(df, "RMSE", c.ORANGE, "RMSE (°C)"),
+            width="stretch",
         )
     with col2:
         st.altair_chart(
-            _metric_chart(df, "R2", "#0f766e", "R²"),
-            use_container_width=True,
+            _metric_chart(df, "R2", c.TEAL, "R²"),
+            width="stretch",
         )
 
     with st.expander("Full comparison table", expanded=True):
@@ -65,7 +68,7 @@ def _comparison(target: str) -> None:
         st.dataframe(
             show,
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
             column_config={
                 "model": "Model",
                 "RMSE": st.column_config.NumberColumn("RMSE (°C)", format="%.3f"),
@@ -83,7 +86,7 @@ def _comparison(target: str) -> None:
     st.markdown("### Predicted vs observed")
     image = c.FIGS / f"pred_vs_obs_{target}.png"
     if image.exists():
-        st.image(str(image), use_container_width=True)
+        st.image(str(image), width="stretch")
         st.caption(
             "Hexbin density on held-out blocks; the red line is y = x. Tight clustering "
             "around the line indicates unbiased predictions."
@@ -99,7 +102,7 @@ def _comparison(target: str) -> None:
         shap = shap.sort_values("mean_abs_shap", ascending=False)
         chart = (
             alt.Chart(shap)
-            .mark_bar(cornerRadiusEnd=4, color="#f97316")
+            .mark_bar(cornerRadiusEnd=4, color=c.ORANGE)
             .encode(
                 y=alt.Y("feature:N", title=None, sort="-x"),
                 x=alt.X("mean_abs_shap:Q", title="Mean |SHAP| (°C)"),
@@ -110,7 +113,7 @@ def _comparison(target: str) -> None:
             )
             .properties(height=max(280, 30 * len(shap)))
         )
-        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, width="stretch")
         if target == "local":
             st.caption(
                 "Because the local-anomaly target is in °C, SHAP values read directly as "
@@ -120,12 +123,12 @@ def _comparison(target: str) -> None:
         image = c.FIGS / f"shap_summary_{target}.png"
         if image.exists():
             with st.expander("SHAP beeswarm"):
-                st.image(str(image), use_container_width=True)
+                st.image(str(image), width="stretch")
 
     params = c.pretty_params(target)
     if not params.empty:
         with st.expander("Tuned hyperparameters (Optuna, GroupKFold)"):
-            st.dataframe(params, hide_index=True, use_container_width=True)
+            st.dataframe(params, hide_index=True, width="stretch")
 
 
 def _all_targets() -> None:
@@ -144,7 +147,7 @@ def _all_targets() -> None:
     combined = pd.concat(frames, ignore_index=True)
     chart = (
         alt.Chart(combined)
-        .mark_bar()
+        .mark_bar(cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
         .encode(
             x=alt.X("model:N", title=None, axis=alt.Axis(labelAngle=0)),
             y=alt.Y("RMSE:Q", title="RMSE (°C)"),
@@ -159,12 +162,12 @@ def _all_targets() -> None:
         )
         .properties(height=340, title="Error across the three prediction targets")
     )
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width="stretch")
 
     st.dataframe(
         combined[["target", "model", "RMSE", "MAE", "R2", "MBE", "n"]],
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         column_config={
             "target": "Target",
             "model": "Model",
